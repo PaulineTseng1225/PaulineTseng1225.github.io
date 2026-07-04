@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>內容編輯器 — Pauline's Portfolio</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="assets/content.js"></script>
+<style>
+  :root {
+    --paper:#F7F8F6; --ink:#17211B; --muted:#5A665E; --accent:#0B7A44;
+    --tint:#E6F1EA; --line:#D8DED9; --card:#FFF; --warn:#B4540A; --warn-bg:#FDF0E4;
+    --header-h:56px;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC",sans-serif; font-size:15px; line-height:1.6; }
+  .mono { font-family:"IBM Plex Mono","Noto Sans TC",monospace; }
+  header.bar { position:sticky; top:0; z-index:60; background:rgba(247,248,246,.96);
+    border-bottom:1px solid var(--line); padding:10px 16px; min-height:var(--header-h);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  header.bar h1 { font-size:.95rem; margin:0; white-space:nowrap; }
+  header.bar h1 span { color:var(--accent); }
+  .bar-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn { font-family:"IBM Plex Mono","Noto Sans TC",monospace; font-size:.85rem;
+    border:1.5px solid var(--accent); color:var(--accent); background:var(--card);
+    padding:7px 14px; border-radius:999px; cursor:pointer; }
+  .btn:hover { background:var(--accent); color:#fff; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.1); }
+  .btn.small { padding:3px 10px; font-size:.75rem; }
+  .btn.ghost { border-color:var(--line); color:var(--muted); }
+  .btn.ghost:hover { background:var(--line); color:var(--ink); }
+  .btn.danger { border-color:#C0392B; color:#C0392B; }
+  .btn.danger:hover { background:#C0392B; color:#fff; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, select:focus-visible {
+    outline:3px solid var(--accent); outline-offset:2px; }
+
+  .layout { display:grid; grid-template-columns:250px minmax(0,1fr); max-width:1280px; margin:0 auto; gap:20px; padding:16px; transition:margin-right .2s; }
+  body.preview-open .layout { margin-right:min(46vw, 720px); }
+  @media (max-width:1100px){ body.preview-open .layout { margin-right:0; } }
+
+  /* ---------- sidebar ---------- */
+  aside.side { position:sticky; top:calc(var(--header-h) + 12px); align-self:start;
+    max-height:calc(100vh - var(--header-h) - 24px); overflow:auto; }
+  .side .side-label { font-family:"IBM Plex Mono","Noto Sans TC",monospace; font-size:.72rem;
+    letter-spacing:.08em; color:var(--muted); margin:6px 0 8px; }
+  .side a { display:block; padding:6px 10px; border-left:2px solid var(--line);
+    font-size:.85rem; color:var(--muted); text-decoration:none; }
+  .side a:hover { color:var(--ink); }
+  .side a.active { border-left-color:var(--accent); color:var(--accent); background:var(--tint); }
+  .side a.sub { padding-left:24px; font-size:.78rem; }
+  .syntax-help { margin-top:18px; background:var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; font-size:.78rem; color:var(--muted); }
+  .syntax-help b { color:var(--ink); }
+  .syntax-help code { font-family:"IBM Plex Mono",monospace; background:var(--tint);
+    border-radius:4px; padding:0 4px; color:var(--ink); }
+  @media (max-width:900px){ .layout { grid-template-columns:1fr; } aside.side { display:none; } }
+
+  /* ---------- restore bar ---------- */
+  .restore-bar { background:var(--warn-bg); border:1px solid var(--warn); border-radius:12px;
+    padding:12px 16px; margin-bottom:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .restore-bar .grow { flex:1; font-size:.88rem; }
+
+  .howto { background:var(--tint); border:1px solid var(--accent); border-radius:12px;
+    padding:14px 18px; margin-bottom:18px; font-size:.88rem; }
+  .howto ol { margin:6px 0 0; padding-left:1.4em; }
+
+  details.panel { background:var(--card); border:1px solid var(--line);
+    border-radius:12px; margin-bottom:14px; scroll-margin-top:calc(var(--header-h) + 14px); }
+  details.panel > summary { padding:14px 18px; cursor:pointer; font-weight:700;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; list-style:none; }
+  details.panel > summary::before { content:"▸"; color:var(--accent); }
+  details.panel[open] > summary::before { content:"▾"; }
+  details.panel > summary .grow { flex:1; }
+  .panel-body { padding:4px 18px 18px; border-top:1px solid var(--line); }
+  .field { margin:14px 0; }
+  .field > label { display:block; font-size:.8rem; color:var(--accent);
+    font-family:"IBM Plex Mono","Noto Sans TC",monospace; margin-bottom:5px; }
+  .field .hint { font-size:.78rem; color:var(--muted); margin-top:4px; }
+  .bi { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:700px){ .bi { grid-template-columns:1fr; } }
+  .bi > div > span { display:block; font-size:.7rem; color:var(--muted);
+    font-family:"IBM Plex Mono",monospace; margin-bottom:3px; }
+  input[type=text], textarea, select { width:100%; border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; font:inherit; font-size:.9rem; background:#FDFDFC; color:var(--ink); }
+  textarea { min-height:74px; resize:vertical; }
+  input:focus, textarea:focus { border-color:var(--accent); }
+  .check { display:flex; align-items:center; gap:8px; font-size:.85rem; margin:8px 0; }
+  .check input { width:auto; }
+  .subcard { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:10px 0;
+    background:#FBFCFA; }
+  .subcard .subhead { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .type-badge { font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--accent);
+    background:var(--tint); border-radius:999px; padding:2px 10px; }
+  .subhead .grow { flex:1; }
+  .addrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .note { font-size:.8rem; color:var(--muted); }
+  .pill { font-family:"IBM Plex Mono","Noto Sans TC",monospace; font-size:.78rem;
+    color:var(--warn); background:var(--warn-bg); border:1.5px solid var(--warn); border-radius:999px;
+    padding:6px 12px; cursor:pointer; }
+  .pill.done { color:var(--accent); background:var(--tint); border-color:var(--accent); }
+  h2.group { font-size:1.05rem; margin:28px 0 10px; }
+  .flash { animation:flashbg 1.6s ease; }
+  @keyframes flashbg { 0%{ background:#FFF3B0; } 100%{ background:#FDFDFC; } }
+
+  /* ---------- drawers ---------- */
+  .drawer { position:fixed; top:var(--header-h); right:0; bottom:0; width:min(380px, 92vw);
+    background:var(--card); border-left:1px solid var(--line); z-index:70;
+    transform:translateX(105%); transition:transform .2s ease; display:flex; flex-direction:column; }
+  .drawer.open { transform:none; box-shadow:-8px 0 24px rgba(23,33,27,.08); }
+  .drawer .d-head { padding:12px 16px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:8px; }
+  .drawer .d-head .grow { flex:1; font-weight:700; font-size:.9rem; }
+  .drawer .d-body { flex:1; overflow:auto; padding:10px 12px; }
+  .ph-item { display:block; width:100%; text-align:left; background:none; cursor:pointer;
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:6px 0;
+    font-size:.8rem; color:var(--ink); font-family:inherit; }
+  .ph-item:hover { border-color:var(--accent); background:var(--tint); }
+  .ph-item .loc { display:block; color:var(--muted); font-size:.72rem;
+    font-family:"IBM Plex Mono","Noto Sans TC",monospace; margin-bottom:2px; }
+  .v-item { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:8px 0; }
+  .v-item .v-name { font-weight:700; font-size:.88rem; }
+  .v-item .v-date { font-size:.72rem; color:var(--muted); font-family:"IBM Plex Mono",monospace; }
+  .v-item .v-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+
+  /* ---------- preview panel ---------- */
+  .preview { position:fixed; top:var(--header-h); right:0; bottom:0; width:min(46vw, 720px);
+    min-width:340px; background:var(--paper); border-left:1px solid var(--line); z-index:65;
+    transform:translateX(105%); transition:transform .2s ease; display:flex; flex-direction:column; }
+  .preview.open { transform:none; box-shadow:-8px 0 24px rgba(23,33,27,.08); }
+  @media (max-width:1100px){ .preview { width:min(94vw, 720px); } }
+  .preview .p-head { padding:10px 14px; border-bottom:1px solid var(--line);
+    display:flex; gap:8px; align-items:center; background:var(--card); flex-wrap:wrap; }
+  .preview .p-head select { width:auto; flex:1; min-width:140px; }
+  .preview iframe { flex:1; border:0; width:100%; background:#fff; }
+  .preview .p-foot { font-size:.72rem; color:var(--muted); padding:6px 14px;
+    border-top:1px solid var(--line); background:var(--card);
+    font-family:"IBM Plex Mono","Noto Sans TC",monospace; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1><span class="mono">PT</span> 作品集內容編輯器</h1>
+  <div class="bar-actions">
+    <button class="pill" id="ph-pill" title="點擊查看待補清單">…</button>
+    <button class="btn" id="preview-btn">👁 預覽</button>
+    <button class="btn" id="versions-btn">🗂 版本</button>
+    <button class="btn primary" id="export-btn">⬇ 匯出 content.js</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="side" aria-label="編輯器導覽">
+    <div class="side-label">編輯導覽</div>
+    <nav id="side-nav"></nav>
+    <div class="syntax-help">
+      <b>文字樣式語法</b>（可用在任何文字欄位）<br>
+      <code>**粗體**</code> → <b>粗體</b><br>
+      <code>==底色標記==</code> → 綠色底色<br>
+      <code>__底線__</code> → 底線<br>
+      <code>%%綠色文字%%</code> → 綠色文字<br>
+      <span style="font-size:.72rem">建議節制使用，重點才突出。</span>
+    </div>
+  </aside>
+  <main id="main-col">
+    <div id="restore-slot"></div>
+    <div class="howto">
+      <strong>怎麼使用（3 步驟）</strong>
+      <ol>
+        <li>修改文字（左英文、右中文）。右側可開「預覽」即時看效果。</li>
+        <li>按右上角「<strong>匯出 content.js</strong>」下載新檔案。</li>
+        <li>把它放進 <span class="mono">assets/</span> 資料夾<strong>取代舊檔</strong>，網站就更新了。編輯器下次打開讀到的也會是這份最新內容。</li>
+      </ol>
+    </div>
+    <div id="app"></div>
+  </main>
+</div>
+
+<!-- 待補清單 drawer -->
+<div class="drawer" id="ph-drawer" aria-label="待補內容清單">
+  <div class="d-head">
+    <span class="grow">待補內容清單</span>
+    <button class="btn small ghost" data-close="ph-drawer">關閉 ✕</button>
+  </div>
+  <div class="d-body" id="ph-list"></div>
+</div>
+
+<!-- 版本 drawer -->
+<div class="drawer" id="v-drawer" aria-label="版本管理">
+  <div class="d-head">
+    <span class="grow">版本管理</span>
+    <button class="btn small ghost" data-close="v-drawer">關閉 ✕</button>
+  </div>
+  <div class="d-body">
+    <div class="field">
+      <label>把目前的編輯內容存成新版本</label>
+      <input type="text" id="v-name" placeholder="版本名稱，例如：改了全家案例的研究段落">
+      <div class="addrow"><button class="btn small" id="v-save">💾 儲存版本</button></div>
+      <div class="hint">版本存在這台電腦的瀏覽器裡。重要成果仍建議定期「匯出 content.js」留檔。</div>
+    </div>
+    <div id="v-list"></div>
+  </div>
+</div>
+
+<!-- 預覽 panel -->
+<div class="preview" id="preview-panel" aria-label="即時預覽">
+  <div class="p-head">
+    <select id="preview-page"></select>
+    <button class="btn small ghost" id="preview-reload">↻ 重新整理</button>
+    <button class="btn small ghost" data-close="preview-panel">關閉 ✕</button>
+  </div>
+  <iframe id="preview-frame" title="網站即時預覽"></iframe>
+  <div class="p-foot">停止輸入約 1 秒後自動更新預覽。中英文切換請用預覽畫面右上角的語言按鈕。</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ---------- state ---------- */
+  let S = JSON.parse(JSON.stringify(SITE));
+  let C = JSON.parse(JSON.stringify(CASE_STUDIES));
+  const app = document.getElementById("app");
+
+  const store = {
+    get(k){ try { return JSON.parse(localStorage.getItem(k) || "null"); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } },
+    del(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+
+  function el(tag, attrs, children){
+    const n = document.createElement(tag);
+    if (attrs) for (const [k,v] of Object.entries(attrs)) {
+      if (k === "text") n.textContent = v;
+      else if (k === "onclick") n.addEventListener("click", v);
+      else if (k === "oninput") n.addEventListener("input", v);
+      else n.setAttribute(k, v);
+    }
+    (children||[]).forEach(c => c && n.appendChild(c));
+    return n;
+  }
+
+  /* ---------- dirty pipeline: scan + autosave + preview ---------- */
+  let scanTimer, saveTimer, prevTimer;
+  function markDirty(){
+    clearTimeout(scanTimer); scanTimer = setTimeout(scanPlaceholders, 300);
+    clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 900);
+    clearTimeout(prevTimer); prevTimer = setTimeout(syncPreview, 1000);
+  }
+  window.addEventListener("beforeunload", autosave);
+
+  /* ---------- field builders ---------- */
+  function plainField(holder, key, label, hint){
+    const input = el("input", { type:"text", value: holder[key] || "",
+      oninput: e => { holder[key] = e.target.value; markDirty(); } });
+    return el("div", { class:"field" }, [
+      el("label", { text: label }), input,
+      hint ? el("div", { class:"hint", text: hint }) : null
+    ]);
+  }
+  function checkField(holder, key, label){
+    const input = el("input", { type:"checkbox" });
+    input.checked = !!holder[key];
+    input.addEventListener("change", () => { holder[key] = input.checked; markDirty(); });
+    return el("label", { class:"check" }, [ input, el("span", { text: label }) ]);
+  }
+  function biField(holder, key, label, opts){
+    opts = opts || {};
+    if (typeof holder[key] === "string") holder[key] = { en: holder[key], zh: holder[key] };
+    if (!holder[key]) holder[key] = { en:"", zh:"" };
+    const v = holder[key];
+    const make = lang => {
+      const tag = opts.textarea ? "textarea" : "input";
+      const f = el(tag, { oninput: e => { v[lang] = e.target.value; markDirty(); } });
+      if (!opts.textarea) f.setAttribute("type","text");
+      f.value = v[lang] || "";
+      return el("div", {}, [ el("span", { text: lang === "en" ? "EN 英文" : "中文" }), f ]);
+    };
+    return el("div", { class:"field" }, [
+      label ? el("label", { text: label }) : null,
+      el("div", { class:"bi" }, [ make("en"), make("zh") ]),
+      opts.hint ? el("div", { class:"hint", text: opts.hint }) : null
+    ]);
+  }
+  function moveBtns(arr, idx, onchange){
+    const wrap = el("span", {}, []);
+    wrap.appendChild(el("button", { class:"btn small ghost", text:"↑", title:"上移",
+      onclick: e => { e.preventDefault(); e.stopPropagation(); if (idx>0){ [arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]]; onchange(); } } }));
+    const d = el("button", { class:"btn small ghost", text:"↓", title:"下移", style:"margin-left:6px",
+      onclick: e => { e.preventDefault(); e.stopPropagation(); if (idx<arr.length-1){ [arr[idx+1],arr[idx]]=[arr[idx],arr[idx+1]]; onchange(); } } });
+    wrap.appendChild(d);
+    return wrap;
+  }
+  function delBtn(label, fn){
+    return el("button", { class:"btn small danger", text: label || "刪除",
+      onclick: e => { e.preventDefault(); e.stopPropagation(); if (confirm("確定要刪除嗎？（可先到「版本」存一份再刪，比較安心）")) fn(); } });
+  }
+
+  /* ---------- block editors ---------- */
+  const BLOCK_NAMES = { p:"段落", list:"條列", stats:"成果數字", img:"圖片/GIF", video:"影片", link:"連結按鈕", figma:"Figma 原型" };
+
+  function blockEditor(section, block, idx){
+    const card = el("div", { class:"subcard" });
+    card.appendChild(el("div", { class:"subhead" }, [
+      el("span", { class:"type-badge", text: BLOCK_NAMES[block.type] || block.type }),
+      el("span", { class:"grow" }),
+      moveBtns(section.blocks, idx, rerender),
+      delBtn("刪除區塊", () => { section.blocks.splice(idx,1); rerender(); })
+    ]));
+
+    if (block.type === "p") {
+      card.appendChild(biField(block, "text", "段落文字", { textarea:true }));
+    }
+    else if (block.type === "list") {
+      block.items = block.items || [];
+      block.items.forEach((item, i) => {
+        const row = el("div", { class:"subcard" });
+        row.appendChild(el("div", { class:"subhead" }, [
+          el("span", { class:"note", text: "項目 " + (i+1) }),
+          el("span", { class:"grow" }),
+          moveBtns(block.items, i, rerender),
+          delBtn("刪除", () => { block.items.splice(i,1); rerender(); })
+        ]));
+        row.appendChild(biField(block.items, i, "", { textarea:true }));
+        card.appendChild(row);
+      });
+      card.appendChild(el("div", { class:"addrow" }, [
+        el("button", { class:"btn small", text:"+ 新增項目",
+          onclick: e => { e.preventDefault(); block.items.push({en:"[To fill in]",zh:"[待補]"}); rerender(); } })
+      ]));
+    }
+    else if (block.type === "stats") {
+      block.items = block.items || [];
+      block.items.forEach((item, i) => {
+        const row = el("div", { class:"subcard" });
+        row.appendChild(el("div", { class:"subhead" }, [
+          el("span", { class:"note", text: "數字 " + (i+1) }),
+          el("span", { class:"grow" }),
+          moveBtns(block.items, i, rerender),
+          delBtn("刪除", () => { block.items.splice(i,1); rerender(); })
+        ]));
+        row.appendChild(plainField(item, "number", "大數字（如 9 → 1、16M、85%）"));
+        row.appendChild(biField(item, "label", "數字下方的說明"));
+        card.appendChild(row);
+      });
+      card.appendChild(el("div", { class:"addrow" }, [
+        el("button", { class:"btn small", text:"+ 新增數字",
+          onclick: e => { e.preventDefault(); block.items.push({number:"[X]", label:{en:"[To fill in]",zh:"[待補]"}}); rerender(); } })
+      ]));
+    }
+    else if (block.type === "img") {
+      card.appendChild(plainField(block, "src", "圖片路徑", "把圖片放進 assets/img/，這裡填 assets/img/檔名.png。GIF 動畫也用這個區塊（填 .gif）。留空顯示佔位框。"));
+      card.appendChild(biField(block, "alt", "替代文字（給看不到圖片的人的描述，無障礙必填）"));
+      card.appendChild(biField(block, "caption", "圖片下方說明（可留空）"));
+    }
+    else if (block.type === "video") {
+      card.appendChild(plainField(block, "src", "影片路徑", "把影片（.mp4 / .webm）放進 assets/img/，這裡填 assets/img/檔名.mp4。適合放操作示範或原型錄影。"));
+      card.appendChild(checkField(block, "autoplay", "自動播放（靜音循環，適合短示範動畫）"));
+      card.appendChild(biField(block, "caption", "影片下方說明（可留空）"));
+    }
+    else if (block.type === "link") {
+      card.appendChild(biField(block, "label", "按鈕文字"));
+      card.appendChild(plainField(block, "url", "連結網址"));
+    }
+    else if (block.type === "figma") {
+      card.appendChild(plainField(block, "url", "此區塊的 Figma 原型連結", "貼上 Figma 的 Share → Copy link。每個 figma 區塊可以放不同的原型，想放幾個就加幾個區塊。"));
+    }
+    return card;
+  }
+
+  function addBlockRow(section){
+    const types = [["p","+ 段落"],["list","+ 條列"],["stats","+ 成果數字"],["img","+ 圖片/GIF"],["video","+ 影片"],["link","+ 連結按鈕"],["figma","+ Figma 原型"]];
+    return el("div", { class:"addrow" }, types.map(([type,label]) =>
+      el("button", { class:"btn small", text: label, onclick: e => {
+        e.preventDefault();
+        const nb = { type };
+        if (type==="p") nb.text = {en:"[To fill in]",zh:"[待補]"};
+        if (type==="list") nb.items = [{en:"[To fill in]",zh:"[待補]"}];
+        if (type==="stats") nb.items = [{number:"[X]", label:{en:"[To fill in]",zh:"[待補]"}}];
+        if (type==="img") { nb.src=""; nb.alt={en:"[To fill in]",zh:"[待補]"}; nb.caption={en:"",zh:""}; }
+        if (type==="video") { nb.src=""; nb.autoplay=false; nb.caption={en:"",zh:""}; }
+        if (type==="link") { nb.label={en:"[To fill in]",zh:"[待補]"}; nb.url=""; }
+        if (type==="figma") nb.url="";
+        section.blocks.push(nb); rerender();
+      }})
+    ));
+  }
+
+  /* ---------- section / case editors ---------- */
+  function sectionEditor(cs, csId, section, idx){
+    const panel = el("details", { class:"panel", id:"pn-" + csId + "-s" + idx });
+    panel.appendChild(el("summary", {}, [
+      el("span", { class:"grow", text: "段落：" + ((section.nav && (section.nav.zh || section.nav.en)) || section.id) }),
+      moveBtns(cs.sections, idx, rerender),
+      delBtn("刪除段落", () => { cs.sections.splice(idx,1); rerender(); })
+    ]));
+    const body = el("div", { class:"panel-body" });
+    body.appendChild(plainField(section, "id", "段落網址代號（英文小寫與連字號，如 impact、research）", "用於段落導航的錨點，同一個 case study 內不能重複。"));
+    body.appendChild(biField(section, "nav", "導航顯示名稱（目錄用，越短越好）"));
+    body.appendChild(biField(section, "heading", "段落標題"));
+    section.blocks = section.blocks || [];
+    section.blocks.forEach((b, i) => body.appendChild(blockEditor(section, b, i)));
+    body.appendChild(addBlockRow(section));
+    panel.appendChild(body);
+    return panel;
+  }
+
+  function caseEditor(id, idx){
+    const cs = C[id];
+    const panel = el("details", { class:"panel", id:"pn-" + id });
+    panel.appendChild(el("summary", {}, [
+      el("span", { class:"grow", text: (idx+1) + ". " + ((cs.title && (cs.title.zh || cs.title.en)) || id) }),
+      moveBtns(S.workOrder, idx, rerender),
+      delBtn("刪除專案", () => { S.workOrder.splice(idx,1); delete C[id]; rerender(); })
+    ]));
+    const body = el("div", { class:"panel-body" });
+
+    body.appendChild(biField(cs, "title", "專案名稱"));
+    body.appendChild(biField(cs, "cardOutcome", "首頁卡片大標（成果導向的一句話）", { textarea:true }));
+    body.appendChild(plainField(cs, "cardImage", "首頁卡片封面圖路徑", "圖片放進 assets/img/，這裡填 assets/img/檔名.png。留空顯示佔位框。"));
+    body.appendChild(biField(cs, "cardImageAlt", "封面圖替代文字"));
+
+    cs.cardTags = cs.cardTags || [];
+    const tagsWrap = el("div", { class:"field" }, [ el("label", { text:"專案標籤（顯示在首頁卡片 + 內頁標題下方，2–3 個為佳）" }) ]);
+    cs.cardTags.forEach((tag, i) => {
+      const row = el("div", { class:"subcard" });
+      row.appendChild(el("div", { class:"subhead" }, [
+        el("span", { class:"note", text:"標籤 " + (i+1) }),
+        el("span", { class:"grow" }),
+        moveBtns(cs.cardTags, i, rerender),
+        delBtn("刪除", () => { cs.cardTags.splice(i,1); rerender(); })
+      ]));
+      row.appendChild(biField(cs.cardTags, i, ""));
+      tagsWrap.appendChild(row);
+    });
+    tagsWrap.appendChild(el("div", { class:"addrow" }, [
+      el("button", { class:"btn small", text:"+ 新增標籤",
+        onclick: e => { e.preventDefault(); cs.cardTags.push({en:"",zh:""}); rerender(); } })
+    ]));
+    body.appendChild(tagsWrap);
+
+    cs.meta = cs.meta || {};
+    body.appendChild(biField(cs.meta, "role", "Overview 卡：我的角色", { hint:"團隊專案務必寫清楚你「具體」負責的部分。" }));
+    body.appendChild(biField(cs.meta, "timeline", "Overview 卡：時程"));
+    body.appendChild(biField(cs.meta, "team", "Overview 卡：團隊"));
+    body.appendChild(biField(cs.meta, "scope", "Overview 卡：範疇"));
+    body.appendChild(biField(cs, "summary", "開頭摘要（2–3 句話說完這個專案）", { textarea:true }));
+    body.appendChild(plainField(cs, "liveDemo", "Live demo 網址（可留空，留空不顯示按鈕）"));
+    body.appendChild(plainField(cs, "github", "GitHub 網址（可留空，留空不顯示按鈕）"));
+
+    body.appendChild(el("h2", { class:"group", text:"內文段落（對應頁面的段落導航）" }));
+    cs.sections = cs.sections || [];
+    cs.sections.forEach((s, i) => body.appendChild(sectionEditor(cs, id, s, i)));
+    body.appendChild(el("div", { class:"addrow" }, [
+      el("button", { class:"btn small", text:"+ 新增段落", onclick: e => {
+        e.preventDefault();
+        cs.sections.push({ id:"section-" + (cs.sections.length+1), nav:{en:"[New]",zh:"[新段落]"}, heading:{en:"[New section]",zh:"[新段落]"}, blocks:[] });
+        rerender();
+      }})
+    ]));
+    panel.appendChild(body);
+    return panel;
+  }
+
+  function siteEditor(){
+    const panel = el("details", { class:"panel", id:"pn-site", open:"" });
+    panel.appendChild(el("summary", {}, [ el("span", { class:"grow", text:"網站整體設定（首頁、About、聯絡）" }) ]));
+    const body = el("div", { class:"panel-body" });
+    body.appendChild(plainField(S, "name", "名字"));
+    body.appendChild(plainField(S, "email", "Email"));
+    body.appendChild(plainField(S, "linkedin", "LinkedIn 網址"));
+    body.appendChild(plainField(S, "resumeUrl", "履歷 PDF 連結", "把履歷 PDF 放進網站資料夾後填檔名，例如 pauline-tseng-resume.pdf"));
+    body.appendChild(biField(S, "heroLine", "首頁主標（一句話定位）", { textarea:true }));
+    body.appendChild(biField(S, "heroSub", "首頁副標", { textarea:true }));
+    body.appendChild(biField(S, "status", "狀態膠囊（求職狀態）"));
+    body.appendChild(biField(S, "aboutTeaser", "首頁 About 摘要", { textarea:true }));
+    body.appendChild(biField(S.aboutPage, "heading", "About 頁標題"));
+    const paras = el("div", { class:"field" }, [ el("label", { text:"About 頁段落" }) ]);
+    S.aboutPage.paragraphs.forEach((p, i) => {
+      const row = el("div", { class:"subcard" });
+      row.appendChild(el("div", { class:"subhead" }, [
+        el("span", { class:"note", text:"段落 " + (i+1) }),
+        el("span", { class:"grow" }),
+        moveBtns(S.aboutPage.paragraphs, i, rerender),
+        delBtn("刪除", () => { S.aboutPage.paragraphs.splice(i,1); rerender(); })
+      ]));
+      row.appendChild(biField(S.aboutPage.paragraphs, i, "", { textarea:true }));
+      paras.appendChild(row);
+    });
+    paras.appendChild(el("div", { class:"addrow" }, [
+      el("button", { class:"btn small", text:"+ 新增段落",
+        onclick: e => { e.preventDefault(); S.aboutPage.paragraphs.push({en:"[To fill in]",zh:"[待補]"}); rerender(); } })
+    ]));
+    body.appendChild(paras);
+    body.appendChild(biField(S, "footerNote", "頁尾註記"));
+    panel.appendChild(body);
+    return panel;
+  }
+
+  function addProjectRow(){
+    const wrap = el("div", { class:"addrow", style:"margin-top:16px" });
+    wrap.appendChild(el("button", { class:"btn", text:"+ 新增專案", onclick: e => {
+      e.preventDefault();
+      const id = prompt("輸入新專案的網址代號（英文小寫與連字號，例如 new-project）：");
+      if (!id) return;
+      if (!/^[a-z0-9-]+$/.test(id)) { alert("代號只能用英文小寫、數字和連字號。"); return; }
+      if (C[id]) { alert("這個代號已存在。"); return; }
+      C[id] = {
+        title:{en:"[New project]",zh:"[新專案]"},
+        cardOutcome:{en:"[To fill in]",zh:"[待補]"}, cardImage:"", cardImageAlt:{en:"",zh:""},
+        cardTags:[{en:"",zh:""}],
+        meta:{ role:{en:"[To fill in]",zh:"[待補]"}, timeline:{en:"",zh:""}, team:{en:"",zh:""}, scope:{en:"",zh:""} },
+        summary:{en:"[To fill in]",zh:"[待補]"},
+        sections:[{ id:"impact", nav:{en:"Impact",zh:"成果"}, heading:{en:"Impact",zh:"成果"}, blocks:[{type:"p",text:{en:"[To fill in]",zh:"[待補]"}}] }]
+      };
+      S.workOrder.push(id);
+      rerender();
+    }}));
+    wrap.appendChild(el("span", { class:"note", text:"新專案不需要任何額外檔案，匯出 content.js 後就會自動出現在網站上。", style:"align-self:center" }));
+    return wrap;
+  }
+
+  /* ---------- sidebar nav + scroll spy ---------- */
+  function buildSideNav(){
+    const nav = document.getElementById("side-nav");
+    nav.innerHTML = "";
+    const add = (label, targetId, sub) => {
+      const a = el("a", { href:"#" + targetId, class: sub ? "sub" : "", text: label, "data-side": targetId });
+      a.addEventListener("click", ev => {
+        ev.preventDefault();
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        let d = target;
+        while (d) { if (d.tagName === "DETAILS") d.open = true; d = d.parentElement ? d.parentElement.closest("details") : null; }
+        if (target.tagName === "DETAILS") target.open = true;
+        target.scrollIntoView({ behavior:"smooth", block:"start" });
+      });
+      nav.appendChild(a);
+    };
+    add("網站整體設定", "pn-site");
+    S.workOrder.forEach((id, i) => {
+      const cs = C[id];
+      add((i+1) + ". " + ((cs.title && (cs.title.zh || cs.title.en)) || id), "pn-" + id);
+      (cs.sections || []).forEach((s, si) => add("· " + ((s.nav && (s.nav.zh || s.nav.en)) || s.id), "pn-" + id + "-s" + si, true));
+    });
+    setupSpy();
+  }
+  let spy;
+  function setupSpy(){
+    if (spy) spy.disconnect();
+    if (!("IntersectionObserver" in window)) return;
+    const links = Array.from(document.querySelectorAll("#side-nav a"));
+    const byId = {}; links.forEach(a => byId[a.dataset.side] = a);
+    spy = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(a => a.classList.remove("active"));
+          const a = byId[e.target.id]; if (a) a.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-10% 0px -80% 0px" });
+    document.querySelectorAll("#app details.panel").forEach(p => spy.observe(p));
+  }
+
+  /* ---------- placeholder scan + drawer ---------- */
+  function domLoc(input){
+    const parts = [];
+    let d = input.closest("details.panel");
+    const chain = [];
+    while (d) { chain.unshift(d); d = d.parentElement ? d.parentElement.closest("details.panel") : null; }
+    chain.forEach(p => { const g = p.querySelector(":scope > summary .grow"); if (g) parts.push(g.textContent.trim()); });
+    const subs = [];
+    let sc = input.closest(".subcard");
+    while (sc) { const b = sc.querySelector(":scope > .subhead .type-badge, :scope > .subhead .note"); if (b) subs.unshift(b.textContent.trim()); sc = sc.parentElement ? sc.parentElement.closest(".subcard") : null; }
+    parts.push(...subs);
+    const fl = input.closest(".field");
+    if (fl) { const lb = fl.querySelector(":scope > label"); if (lb && lb.textContent.trim()) parts.push(lb.textContent.trim()); }
+    const langSpan = input.parentElement ? input.parentElement.querySelector(":scope > span") : null;
+    if (langSpan) parts.push(langSpan.textContent.trim());
+    return parts.join(" › ");
+  }
+  function scanPlaceholders(){
+    const fields = Array.from(app.querySelectorAll("input[type=text], textarea"));
+    const items = fields.filter(f => f.value.includes("[")).map(f => ({ el:f, loc:domLoc(f), preview:f.value.slice(0,60) }));
+    const pill = document.getElementById("ph-pill");
+    pill.textContent = items.length > 0 ? ("待補 " + items.length + " 處 ▸") : "沒有待補內容 ✓";
+    pill.className = "pill" + (items.length === 0 ? " done" : "");
+    const list = document.getElementById("ph-list");
+    list.innerHTML = "";
+    if (items.length === 0) {
+      list.appendChild(el("p", { class:"note", text:"目前沒有以 [ 方括號 ] 標記的待補內容。想標記待補的地方，直接在文字裡輸入 [待補：說明] 即可。" }));
+    }
+    items.forEach(it => {
+      const btn = el("button", { class:"ph-item" });
+      btn.appendChild(el("span", { class:"loc", text: it.loc || "（未命名欄位）" }));
+      btn.appendChild(document.createTextNode(it.preview + (it.preview.length >= 60 ? "…" : "")));
+      btn.addEventListener("click", () => {
+        let d = it.el.closest("details");
+        while (d) { d.open = true; d = d.parentElement ? d.parentElement.closest("details") : null; }
+        it.el.scrollIntoView({ behavior:"smooth", block:"center" });
+        it.el.focus({ preventScroll:true });
+        it.el.classList.remove("flash"); void it.el.offsetWidth; it.el.classList.add("flash");
+      });
+      list.appendChild(btn);
+    });
+  }
+
+  /* ---------- versions ---------- */
+  function versionsList(){ return store.get("pt-versions") || []; }
+  function renderVersions(){
+    const list = document.getElementById("v-list");
+    list.innerHTML = "";
+    const vs = versionsList();
+    if (vs.length === 0) { list.appendChild(el("p", { class:"note", text:"還沒有儲存的版本。" })); return; }
+    vs.slice().reverse().forEach((v) => {
+      const realIdx = vs.indexOf(v);
+      const item = el("div", { class:"v-item" });
+      item.appendChild(el("div", { class:"v-name", text: v.name }));
+      item.appendChild(el("div", { class:"v-date", text: v.date }));
+      const acts = el("div", { class:"v-actions" });
+      acts.appendChild(el("button", { class:"btn small", text:"載入", onclick: () => {
+        if (!confirm("載入這個版本會覆蓋目前畫面上的編輯內容（建議先把目前內容也存成版本）。確定載入？")) return;
+        S = JSON.parse(JSON.stringify(v.S)); C = JSON.parse(JSON.stringify(v.C));
+        rerender();
+      }}));
+      acts.appendChild(el("button", { class:"btn small ghost", text:"匯出", onclick: () => downloadContent(v.S, v.C) }));
+      acts.appendChild(el("button", { class:"btn small danger", text:"刪除", onclick: () => {
+        if (!confirm("確定刪除這個版本？")) return;
+        const arr = versionsList(); arr.splice(realIdx,1); store.set("pt-versions", arr); renderVersions();
+      }}));
+      item.appendChild(acts);
+      list.appendChild(item);
+    });
+  }
+  document.getElementById("v-save").addEventListener("click", () => {
+    const nameInput = document.getElementById("v-name");
+    const name = nameInput.value.trim() || ("未命名版本 " + new Date().toLocaleString());
+    const arr = versionsList();
+    arr.push({ name, date: new Date().toLocaleString(), S: JSON.parse(JSON.stringify(S)), C: JSON.parse(JSON.stringify(C)) });
+    if (!store.set("pt-versions", arr)) { alert("儲存失敗：瀏覽器儲存空間不足。請刪除舊版本或改用「匯出 content.js」留檔。"); return; }
+    nameInput.value = "";
+    renderVersions();
+  });
+
+  /* ---------- autosave ---------- */
+  function autosave(){
+    store.set("pt-autosave", { date: new Date().toLocaleString(), S, C });
+  }
+  function checkAutosave(){
+    const a = store.get("pt-autosave");
+    if (!a || !a.S || !a.C) return;
+    const slot = document.getElementById("restore-slot");
+    const bar = el("div", { class:"restore-bar" });
+    bar.appendChild(el("span", { class:"grow", text:"💡 找到上次的自動儲存（" + a.date + "），可能包含尚未匯出的編輯。要載入嗎？" }));
+    bar.appendChild(el("button", { class:"btn small", text:"載入上次的編輯", onclick: () => {
+      S = JSON.parse(JSON.stringify(a.S)); C = JSON.parse(JSON.stringify(a.C));
+      slot.innerHTML = ""; rerender();
+    }}));
+    bar.appendChild(el("button", { class:"btn small ghost", text:"忽略，從 content.js 重新開始", onclick: () => {
+      store.del("pt-autosave"); slot.innerHTML = "";
+    }}));
+    slot.appendChild(bar);
+  }
+
+  /* ---------- preview ---------- */
+  const previewPanel = document.getElementById("preview-panel");
+  const previewFrame = document.getElementById("preview-frame");
+  const previewPage = document.getElementById("preview-page");
+  function buildPreviewOptions(){
+    const cur = previewPage.value;
+    previewPage.innerHTML = "";
+    previewPage.appendChild(el("option", { value:"index.html", text:"首頁" }));
+    previewPage.appendChild(el("option", { value:"about.html", text:"About 頁" }));
+    S.workOrder.forEach(id => {
+      const cs = C[id];
+      previewPage.appendChild(el("option", { value:"work.html?id=" + id, text:"Case study：" + ((cs.title && (cs.title.zh || cs.title.en)) || id) }));
+    });
+    if (cur) previewPage.value = cur;
+    if (!previewPage.value) previewPage.value = "index.html";
+  }
+  function previewUrl(){
+    const base = previewPage.value || "index.html";
+    return base + (base.includes("?") ? "&" : "?") + "preview=1";
+  }
+  function syncPreview(){
+    if (!previewPanel.classList.contains("open")) return;
+    if (!store.set("pt-preview", { SITE:S, CASE_STUDIES:C })) return;
+    try { previewFrame.contentWindow.location.reload(); }
+    catch(e){ previewFrame.src = previewUrl(); }
+  }
+  document.getElementById("preview-btn").addEventListener("click", () => {
+    buildPreviewOptions();
+    const opening = !previewPanel.classList.contains("open");
+    previewPanel.classList.toggle("open");
+    document.body.classList.toggle("preview-open", opening);
+    if (opening) {
+      if (!store.set("pt-preview", { SITE:S, CASE_STUDIES:C })) {
+        alert("這個瀏覽器環境無法使用即時預覽（無法寫入本機儲存）。你仍可以匯出 content.js 後直接打開網站查看。");
+        previewPanel.classList.remove("open"); document.body.classList.remove("preview-open");
+        return;
+      }
+      previewFrame.src = previewUrl();
+    }
+  });
+  previewPage.addEventListener("change", () => { store.set("pt-preview", { SITE:S, CASE_STUDIES:C }); previewFrame.src = previewUrl(); });
+  document.getElementById("preview-reload").addEventListener("click", () => { store.set("pt-preview", { SITE:S, CASE_STUDIES:C }); previewFrame.src = previewUrl(); });
+
+  /* ---------- drawers open/close ---------- */
+  document.getElementById("ph-pill").addEventListener("click", () => {
+    scanPlaceholders();
+    document.getElementById("ph-drawer").classList.toggle("open");
+    document.getElementById("v-drawer").classList.remove("open");
+  });
+  document.getElementById("versions-btn").addEventListener("click", () => {
+    renderVersions();
+    document.getElementById("v-drawer").classList.toggle("open");
+    document.getElementById("ph-drawer").classList.remove("open");
+  });
+  document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
+    const target = document.getElementById(b.dataset.close);
+    target.classList.remove("open");
+    if (b.dataset.close === "preview-panel") document.body.classList.remove("preview-open");
+  }));
+
+  /* ---------- export ---------- */
+  function serialize(s, c){
+    const stamp = new Date().toISOString().slice(0,10);
+    return "/* =========================================================\n" +
+      "   PAULINE — PORTFOLIO CONTENT (bilingual)\n" +
+      "   由內容編輯器 editor.html 於 " + stamp + " 匯出。\n" +
+      "   你可以直接編輯這個檔案，或用 editor.html 以表單編輯。\n" +
+      "   ========================================================= */\n\n" +
+      "const SITE = " + JSON.stringify(s, null, 2) + ";\n\n" +
+      "const CASE_STUDIES = " + JSON.stringify(c, null, 2) + ";\n";
+  }
+  function downloadContent(s, c){
+    const blob = new Blob([serialize(s, c)], { type:"text/javascript;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "content.js";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  document.getElementById("export-btn").addEventListener("click", () => downloadContent(S, C));
+
+  /* ---------- boot ---------- */
+  function rerender(){
+    const openIds = new Set(Array.from(app.querySelectorAll("details.panel")).filter(d => d.open).map(d => d.id));
+    app.innerHTML = "";
+    app.appendChild(siteEditor());
+    app.appendChild(el("h2", { class:"group", text:"專案（順序 = 首頁卡片順序）" }));
+    S.workOrder.forEach((id, i) => app.appendChild(caseEditor(id, i)));
+    app.appendChild(addProjectRow());
+    app.querySelectorAll("details.panel").forEach(d => { if (openIds.has(d.id)) d.open = true; });
+    buildSideNav();
+    scanPlaceholders();
+    markDirty();
+  }
+  rerender();
+  checkAutosave();
+})();
+</script>
+</body>
+</html>
